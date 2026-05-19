@@ -1,39 +1,51 @@
 import os
+import sys
 import requests
 
-def consultar_lol():
-    # Lee la URL desde las variables de entorno para cumplir seguridad
-    url_api = os.getenv('API_URL_PROYECTO')
-    
-    if not url_api:
-        print("ERROR CRÍTICO: Falta configurar la variable 'API_URL_PROYECTO'.")
-        return
+
+def buscar_digimon_automatico():
+    # 1. Variable de entorno obligatoria de la pauta. Por defecto busca a Agumon.
+    api_url_base = os.getenv(
+        "API_URL_PROYECTO", "https://digimon-api.vercel.app/api/digimon/name/"
+    )
+    digimon_por_defecto = "agumon"
+
+    url_final = f"{api_url_base}{digimon_por_defecto}"
+
+    print("\n--- INICIANDO CONTENEDOR DIGIMON API ---")
+    print(f"Conectando a: {url_final}")
 
     try:
-        # Hacemos la consulta a la base de datos de Riot
-        respuesta = requests.get(url_api, timeout=10)
-        respuesta.raise_for_status()
-        datos = respuesta.json()
-        
-        # Entramos al diccionario para sacar los datos de Aatrox
-        info_campeon = datos['data']['Aatrox']
-        
-        # Mostramos los 3 datos que pide la guía (Nombre, Vida y Maná)
-        print("\n=== ANALIZADOR DE CAMPEONES: LEAGUE OF LEGENDS ===")
-        print(f"Campeón: {info_campeon['name']} ({info_campeon['title']})")
-        print(f"Vida Base: {info_campeon['stats']['hp']} HP")
-        print(f"Maná Base: {info_campeon['stats']['mp']} MP")
-        print("==================================================\n")
+        # 2. Petición con tiempo límite de 10 segundos
+        response = requests.get(url_final, timeout=10)
+        response.raise_for_status()
+        data = response.json()
 
-    # Los 4 manejos de errores obligatorios
-    except requests.exceptions.ConnectionError:
-        print("Error 1: No hay conexión a internet.")
-    except requests.exceptions.Timeout:
-        print("Error 2: El servidor de Riot tardó demasiado.")
+        # La API devuelve una lista, extraemos el primer elemento [0]
+        nombre = data[0]["name"]
+        nivel = data[0]["level"]
+        imagen = data[0]["img"]
+
+        # 3. Impresión limpia para los Logs de Jenkins y Docker
+        print("\n========================================")
+        print("DATOS DEL DIGIMON OBTENIDOS CON ÉXITO:")
+        print(f"Nombre: {nombre}")
+        print(f"Nivel: {nivel}")
+        print(f"URL Imagen: {imagen}")
+        print("========================================")
+        print("Contenedor ejecutado correctamente.")
+
     except requests.exceptions.HTTPError:
-        print("Error 3: No se encontró el campeón (404 Error).")
-    except Exception as e:
-        print(f"Error 4: Error inesperado al procesar: {e}")
+        print(f"Error 1: No se encontró al Digimon '{digimon_por_defecto}'.")
+    except requests.exceptions.ConnectionError:
+        print("Error 2: Problema de red o internet dentro del contenedor.")
+    except requests.exceptions.Timeout:
+        print("Error 3: Tiempo de espera agotado al conectar con la API.")
+    except (ValueError, KeyError, IndexError):
+        print("Error 4: Los datos recibidos no tienen el formato JSON correcto.")
+
 
 if __name__ == "__main__":
-    consultar_lol()
+    # Ejecuta una vez y cierra limpio (Exited 0) para que Jenkins no se quede pegado
+    buscar_digimon_automatico()
+    sys.exit(0)
