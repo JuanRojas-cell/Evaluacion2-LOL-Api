@@ -1,14 +1,20 @@
 #!/bin/bash
 
-# 1. Definir la variable de entorno localmente
-export API_URL_PROYECTO="https://ddragon.leagueoflegends.com/cdn/13.18.1/data/es_ES/champion/Aatrox.json"
+# 1. Limpiar contenedores anteriores para evitar choques de nombres
+echo "Limpiando contenedores antiguos..."
+docker rm -f indicator-running 2>/dev/null || true
 
-echo "=== 1. Construyendo la imagen Docker ==="
-docker build -t lol-app .
+# 2. Construir la imagen de la aplicación de Digimon
+echo "Construyendo la imagen digimon-app..."
+docker build -t digimon-app .
 
-echo "=== 2. Borrando contenedor antiguo si existe ==="
-docker rm -f indicator-running 2>/dev/null
+# 3. Ejecutar el contenedor pasando la variable de entorno obligatoria
+echo "Iniciando el contenedor..."
+docker run --name indicator-running -e API_URL_PROYECTO="https://digimon-api.vercel.app/api/digimon/name/" digimon-app
 
-echo "=== 3. Corriendo el nuevo contenedor ==="
-# Ejecutamos el contenedor pasándole la variable de entorno
-docker run --name indicator-running -e API_URL_PROYECTO=$API_URL_PROYECTO lol-app
+# 4. Documentar la salida para las evidencias (output.txt)
+echo "Generando registro de salida..."
+docker ps -a --filter "name=indicator-running" > output.txt
+docker logs indicator-running >> output.txt
+
+echo "Proceso de automatización finalizado con éxito."
